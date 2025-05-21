@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="An interactive grid-based crochet pattern designer">
+    <title>Crochet Designer</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Crochet Designer</h1>
+            <div class="grid-controls">
+                <label for="grid-rows">Rows:</label>
+                <input type="number" id="grid-rows" min="5" max="50" value="20">
+                <label for="grid-cols">Columns:</label>
+                <input type="number" id="grid-cols" min="5" max="50" value="20">
+                <button id="update-grid">Update Grid</button>
+            </div>
+        </header>
+        
+        <main>
+            <div class="tools-container">
+                <div class="tool" data-tool="pencil" title="Pencil Tool - Draw individual cells">✏️</div>
+                <div class="tool" data-tool="eraser" title="Eraser Tool - Clear individual cells">🧽</div>
+                <div class="tool" data-tool="fill" title="Fill Tool - Fill connected areas">🪣</div>
+                <div class="tool" data-tool="picker" title="Color Picker - Select a color from the grid">👆</div>
+                <div class="tool" data-tool="selection" title="Selection Tool - Select and move cells">◻️</div>
+                <div class="tool" data-tool="move" title="Paste Tool - Place copied/cut content">📌</div>
+            </div>
+            
+            <div class="tool-buttons">
+                <button id="undo-btn" class="tool-btn" title="Undo (Ctrl+Z)">↩️ Undo</button>
+                <button id="redo-btn" class="tool-btn" title="Redo (Ctrl+Y)">↪️ Redo</button>
+                <button id="copy-btn" class="tool-btn" title="Copy Selection (Ctrl+C)">📋 Copy</button>
+                <button id="cut-btn" class="tool-btn" title="Cut Selection (Ctrl+X)">✂️ Cut</button>
+                <button id="paste-btn" class="tool-btn" title="Paste (Ctrl+V)">📌 Paste</button>
+                <button id="clear-btn" class="tool-btn" onclick="app.clearGrid()">🗑️ Clear All</button>
+            </div>
+            
+            <div class="action-buttons">
+                <button id="apply-selection" class="apply-selection-btn">Apply Color to Selection</button>
+                <button id="clear-selection" class="apply-selection-btn">Clear Selection</button>
+            </div>
+            
+            <div id="grid-container"></div>
+            
+            <div class="color-palette">
+                <div class="color-option selected" data-color="#FFFFFF" style="background-color: #FFFFFF;"></div>
+                <div class="color-option" data-color="#FF0000" style="background-color: #FF0000;"></div>
+                <div class="color-option" data-color="#FFA500" style="background-color: #FFA500;"></div>
+                <div class="color-option" data-color="#FFFF00" style="background-color: #FFFF00;"></div>
+                <div class="color-option" data-color="#008000" style="background-color: #008000;"></div>
+                <div class="color-option" data-color="#0000FF" style="background-color: #0000FF;"></div>
+                <div class="color-option" data-color="#800080" style="background-color: #800080;"></div>
+                <div class="color-option" data-color="#000000" style="background-color: #000000;"></div>
+                <div class="color-option" data-color="#808080" style="background-color: #808080;"></div>
+                <div class="color-option" data-color="#FFC0CB" style="background-color: #FFC0CB;"></div>
+                <div class="color-option color-wheel" title="Custom Color"></div>
+            </div>
+            
+            <!-- Color wheel modal -->
+            <div id="color-wheel-container" class="color-wheel-container">
+                <h3>Choose Custom Color</h3>
+                <input type="color" id="color-wheel" value="#000000">
+                <input type="text" id="color-hex" value="#000000" placeholder="Hex color code">
+                <button id="color-wheel-apply">Apply Color</button>
+                <button id="color-wheel-cancel">Cancel</button>
+            </div>
+            
+            <div class="keyboard-shortcuts">
+                <h3>Keyboard Shortcuts</h3>
+                <ul>
+                    <li><kbd>Ctrl</kbd>+<kbd>Z</kbd> Undo</li>
+                    <li><kbd>Ctrl</kbd>+<kbd>Y</kbd> Redo</li>
+                    <li><kbd>Ctrl</kbd>+<kbd>C</kbd> Copy selection</li>
+                    <li><kbd>Ctrl</kbd>+<kbd>X</kbd> Cut selection</li>
+                    <li><kbd>Ctrl</kbd>+<kbd>V</kbd> Paste</li>
+                    <li><kbd>Esc</kbd> Cancel paste</li>
+                </ul>
+            </div>
+            
+            <div class="tool-help">
+                <h3>Tool Tips</h3>
+                <p><strong>Selection Tool:</strong> Click and drag to select area. Click inside selection and drag to move it.</p>
+                <p><strong>Paste Tool:</strong> Click to position pasted content, press ESC to cancel.</p>
+            </div>
+        </main>
+    </div>
+    
+    <script src="js/utils.js"></script>
+    <script src="js/history.js"></script>
+    <script src="js/grid.js"></script>
+    <script src="js/tools.js"></script>
+    <script src="js/colorPalette.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

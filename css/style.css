@@ -1,0 +1,279 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Arial', sans-serif;
+    line-height: 1.6;
+    color: #333;
+    background-color: #f4f4f4;
+}
+
+.container {
+    width: 90%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+header {
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+h1 {
+    margin-bottom: 15px;
+}
+
+.grid-controls {
+    margin-bottom: 15px;
+}
+
+.grid-controls input {
+    width: 60px;
+    padding: 5px;
+    margin: 0 10px;
+}
+
+.grid-controls button {
+    padding: 5px 10px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+.grid-controls button:hover {
+    background-color: #45a049;
+}
+
+.tools-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 15px;
+    gap: 10px;
+}
+
+.tool {
+    cursor: pointer;
+    padding: 10px;
+    font-size: 24px;
+    border: 1px solid #ddd;
+    background-color: #f9f9f9;
+    border-radius: 5px;
+}
+
+.tool.active {
+    background-color: #ddd;
+    border: 1px solid #999;
+}
+
+#grid-container {
+    display: grid;
+    grid-template-columns: repeat(20, 1fr);
+    gap: 1px;
+    margin: 0 auto 20px;
+    max-width: 800px;
+    background-color: #ccc;
+}
+
+.grid-cell {
+    aspect-ratio: 1;
+    background-color: white;
+    cursor: pointer;
+}
+
+.grid-cell.selected {
+    outline: 2px dashed #ff5722;
+    outline-offset: -2px;
+    position: relative;
+    z-index: 1;
+}
+
+.grid-cell.move-preview {
+    outline: 2px solid #4CAF50;
+    outline-offset: -2px;
+    position: relative;
+    z-index: 2;
+    opacity: 0.8;
+}
+
+.color-palette {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.color-option {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid #ccc;
+}
+
+.color-option.selected {
+    border: 2px solid #000;
+}
+
+.color-option.color-wheel {
+    background: linear-gradient(45deg, red, yellow, lime, cyan, blue, magenta, red);
+    overflow: hidden;
+}
+
+.color-wheel-container {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    display: none;
+}
+
+.color-wheel-container.active {
+    display: block;
+}
+
+.color-wheel-container input[type="color"] {
+    width: 100%;
+    height: 50px;
+    border: none;
+    cursor: pointer;
+}
+
+.color-wheel-container input[type="text"] {
+    width: 100%;
+    padding: 8px;
+    margin-top: 10px;
+    font-family: monospace;
+    text-align: center;
+}
+
+.color-wheel-container button {
+    width: 100%;
+    padding: 8px;
+    margin-top: 10px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+.color-wheel-container button:hover {
+    background-color: #45a049;
+}
+
+.apply-selection-btn {
+    margin-top: 10px;
+    padding: 8px 15px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    display: none;
+}
+
+.apply-selection-btn.active {
+    display: inline-block;
+}
+
+.action-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.tool-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.tool-btn {
+    padding: 8px 15px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.tool-btn:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
+/* Keyboard shortcuts display */
+.keyboard-shortcuts {
+    margin-top: 20px;
+    padding: 10px;
+    background-color: #f9f9f9;
+    border-radius: 5px;
+    font-size: 0.9em;
+}
+
+.keyboard-shortcuts ul {
+    list-style-type: none;
+    columns: 2;
+}
+
+.keyboard-shortcuts li {
+    margin: 5px 0;
+}
+
+.keyboard-shortcuts kbd {
+    background-color: #eee;
+    border-radius: 3px;
+    border: 1px solid #b4b4b4;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, .2);
+    color: #333;
+    display: inline-block;
+    font-size: 0.85em;
+    padding: 2px 4px;
+    white-space: nowrap;
+}
+
+.tool-help {
+    margin-top: 15px;
+    padding: 10px;
+    background-color: #f0f0f0;
+    border-radius: 5px;
+    font-size: 0.9em;
+}
+
+.tool-help p {
+    margin: 8px 0;
+}
+
+.tool-help strong {
+    color: #333;
+}
+
+.paste-notification {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 4px;
+    font-size: 14px;
+    z-index: 1000;
+    transition: opacity 0.5s ease;
+}
+
+.paste-notification.fade-out {
+    opacity: 0;
+}
