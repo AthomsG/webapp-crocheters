@@ -122,3 +122,5 @@ class Grid {
         ].filter(cell => cell !== null);
     }
 }
+
+export default Grid;

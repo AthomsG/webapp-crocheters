@@ -16,32 +16,13 @@ class App {
         this.pasteBtn = document.getElementById('paste-btn');
         
         // App state
-        this.currentColor = '#000000'; // Default to black
+        this.currentColor = '#FF0000'; // Default to red instead of white
         this.clipboard = null;
-        this.history = new History();
-        
-        this.tools = {
-            pencil: new PencilTool(),
-            eraser: new EraserTool(),
-            fill: new FillTool(),
-            picker: new ColorPickerTool(),
-            selection: new SelectionTool(),
-            move: new MoveTool()
-        };
-        this.activeTool = this.tools.pencil;
-        
-        // Track previous tool for better UX when switching back after operations
         this.previousTool = null;
-        
-        // Initialize components
-        this.grid = new Grid(this.gridContainer);
-        this.colorPalette = new ColorPalette(this.colorPaletteElement);
-        
-        // Add mouse tracking for paste preview
         this.mousePosition = { x: 0, y: 0, gridCell: null };
         
-        // Set up event listeners
-        this.setupEventListeners();
+        // NOTE: We no longer initialize components here
+        // They will be initialized in main.js
     }
     
     setupEventListeners() {
@@ -167,6 +148,8 @@ class App {
         
         // Set default active tool
         this.setActiveTool('pencil');
+        
+        console.log("Event listeners set up");
     }
     
     setActiveTool(toolName) {
@@ -177,14 +160,27 @@ class App {
             this.previousTool = this.activeTool.name;
         }
         
-        // If we're switching from move tool with an active paste preview, cancel it
-        if (this.activeTool.name === 'move' && this.activeTool.pastedData) {
-            this.activeTool.cancelPastePreview();
-        }
-        
-        // If we're switching from selection tool, cancel any ongoing operations
-        if (this.activeTool.name === 'selection' && this.activeTool.cancelOperation) {
-            this.activeTool.cancelOperation();
+        // Handle tool-specific cleanup before changing tools
+        if (this.activeTool) {
+            // Move tool cleanup
+            if (this.activeTool.name === 'move' && 
+                this.activeTool.pastedData && 
+                typeof this.activeTool.cancelPastePreview === 'function') {
+                this.activeTool.cancelPastePreview();
+            }
+            
+            // Selection tool cleanup - ONLY for selection tool
+            if (this.activeTool.name === 'selection') {
+                // Commit floating selection when changing tools
+                if (typeof this.activeTool.mergeFloatingLayer === 'function') {
+                    this.activeTool.mergeFloatingLayer();
+                }
+                
+                // Cancel any ongoing selection operations
+                if (typeof this.activeTool.cancelOperation === 'function') {
+                    this.activeTool.cancelOperation();
+                }
+            }
         }
         
         // Update the active tool
@@ -240,12 +236,19 @@ class App {
     }
     
     setCurrentColor(color) {
+        this.log('Setting current color to:', color);
         this.currentColor = color;
-        this.colorPalette.selectColor(color);
         
-        // If we have a selection tool active and cells selected, update the buttons
-        if (this.activeTool.name === 'selection') {
-            this.updateSelectionUI();
+        // Update the color palette visual selection if available
+        if (this.colorPalette && typeof this.colorPalette.markSelectedColor === 'function') {
+            this.colorPalette.markSelectedColor(color);
+        }
+    }
+    
+    // Add a logging function to help with debugging
+    log(message, ...data) {
+        if (window.debugMode) {
+            console.log(`[App] ${message}`, ...data);
         }
     }
     
@@ -278,7 +281,4 @@ class App {
     }
 }
 
-// Initialize the application when the DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-    window.app = new App();
-});
+export default App;

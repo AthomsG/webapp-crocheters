@@ -1,18 +1,18 @@
 // Helper functions for the application
 
-function clamp(value, min, max) {
+export function clamp(value, min, max) {
     return Math.min(Math.max(value, min), max);
 }
 
 // Function to validate grid size input
-function validateGridSize(size, min = 5, max = 50) {
+export function validateGridSize(size, min = 5, max = 50) {
     const numSize = parseInt(size);
     if (isNaN(numSize)) return min;
     return clamp(numSize, min, max);
 }
 
 // Function to export the current grid as an image
-function exportGridAsImage(gridContainer) {
+export function exportGridAsImage(gridContainer) {
     // This is a placeholder for future implementation
     // Would use html2canvas or a similar library
     console.log("Export functionality will be implemented in the future");
@@ -20,7 +20,7 @@ function exportGridAsImage(gridContainer) {
 }
 
 // Function to save grid data (for future backend integration)
-function saveGridData(grid, name) {
+export function saveGridData(grid, name) {
     // This is a placeholder for future implementation with backend
     const gridData = {
         name: name || "Untitled Design",

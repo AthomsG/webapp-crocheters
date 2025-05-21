@@ -35,6 +35,9 @@ class History {
     
     // Universal matrix-based action recording
     addMatrixAction(changes) {
+        // Debug the changes being recorded for troubleshooting
+        console.log("Recording matrix action with", changes.length, "changes");
+        
         // Create an action representing grid cell changes
         const action = {
             type: 'matrixChange',
@@ -115,13 +118,16 @@ class History {
         const action = this.undoStack.pop();
         this.redoStack.push(action);
         
+        console.log("Undoing action of type:", action.type);
+        
         switch (action.type) {
             case 'matrixChange':
-                // Undo each cell change in the matrix
-                action.changes.forEach(change => {
+                // Undo each cell change in the matrix (in reverse order for proper restoration)
+                for (let i = action.changes.length - 1; i >= 0; i--) {
+                    const change = action.changes[i];
                     change.cell.style.backgroundColor = change.oldColor;
                     change.cell.dataset.color = change.oldColor;
-                });
+                }
                 break;
                 
             // ...other existing case handlers...
@@ -185,6 +191,8 @@ class History {
         
         const action = this.redoStack.pop();
         this.undoStack.push(action);
+        
+        console.log("Redoing action of type:", action.type);
         
         switch (action.type) {
             case 'matrixChange':
@@ -268,3 +276,5 @@ class History {
         this.updateUndoRedoUI();
     }
 }
+
+export default History;
