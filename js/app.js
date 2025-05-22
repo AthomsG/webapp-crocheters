@@ -1,3 +1,6 @@
+// Import utility functions for saving
+import { exportGridAsImage, saveGridFile, importGridFile, validateGridSize } from './utils.js';
+
 class App {
     constructor() {
         // DOM elements
@@ -8,6 +11,18 @@ class App {
         this.colsInput = document.getElementById('grid-cols');
         this.updateGridBtn = document.getElementById('update-grid');
         this.clearAllBtn = document.getElementById('clear-all-btn');
+        this.saveBtn = document.getElementById('save-btn');
+        this.importGridBtn = document.getElementById('import-grid');
+        this.gridFileInput = document.getElementById('grid-file-input');
+        
+        // Save modal elements
+        this.saveModal = document.getElementById('save-modal');
+        this.closeModalBtn = document.querySelector('.close-modal');
+        this.saveAsImageBtn = document.getElementById('save-as-image-btn');
+        this.saveAsGridBtn = document.getElementById('save-as-grid-btn');
+        this.imageResolution = document.getElementById('image-resolution');
+        this.gridFilename = document.getElementById('grid-filename');
+        this.includeGridLines = document.getElementById('include-grid-lines');
         
         // App state
         this.currentColor = '#000000'; // Changed from '#FF0000' to black as default
@@ -96,6 +111,69 @@ class App {
                 // Show confirmation dialog
                 if (confirm('Are you sure you want to clear the entire grid?')) {
                     this.clearGrid();
+                }
+            });
+        }
+        
+        // Save button click - open modal
+        if (this.saveBtn) {
+            this.saveBtn.addEventListener('click', () => {
+                this.openSaveModal();
+            });
+        }
+        
+        // Save modal close button
+        if (this.closeModalBtn) {
+            this.closeModalBtn.addEventListener('click', () => {
+                this.closeSaveModal();
+            });
+        }
+        
+        // Close modal when clicking outside
+        window.addEventListener('click', (e) => {
+            if (e.target === this.saveModal) {
+                this.closeSaveModal();
+            }
+        });
+        
+        // Save as image button
+        if (this.saveAsImageBtn) {
+            this.saveAsImageBtn.addEventListener('click', () => {
+                const resolution = parseInt(this.imageResolution.value) || 1;
+                const includeGrid = this.includeGridLines && this.includeGridLines.checked;
+                const filename = this.gridFilename.value.trim() || 'crochet-design';
+                
+                exportGridAsImage(this.gridContainer, {
+                    resolution: resolution,
+                    includeGrid: includeGrid,
+                    filename: filename
+                });
+                
+                this.closeSaveModal();
+            });
+        }
+        
+        // Save as grid file button
+        if (this.saveAsGridBtn) {
+            this.saveAsGridBtn.addEventListener('click', () => {
+                const filename = this.gridFilename.value.trim() || 'crochet-design';
+                
+                saveGridFile(this.grid, filename);
+                this.closeSaveModal();
+            });
+        }
+        
+        // Import grid button
+        if (this.importGridBtn && this.gridFileInput) {
+            this.importGridBtn.addEventListener('click', () => {
+                this.gridFileInput.click();
+            });
+            
+            this.gridFileInput.addEventListener('change', (e) => {
+                if (e.target.files && e.target.files[0]) {
+                    importGridFile(e.target.files[0], this);
+                    // Clear the input so the same file can be selected again if needed
+                    e.target.value = '';
                 }
             });
         }
@@ -238,6 +316,28 @@ class App {
         this.setActiveTool('pencil');
         
         console.log("Grid cleared");
+    }
+    
+    // Open save modal with improved defaults
+    openSaveModal() {
+        if (this.saveModal) {
+            const dateStr = new Date().toISOString().slice(0, 10);
+            this.gridFilename.value = `crochet-design-${dateStr}`;
+            
+            // Set default for grid lines checkbox
+            if (this.includeGridLines) {
+                this.includeGridLines.checked = false; // Default to no grid lines
+            }
+            
+            this.saveModal.style.display = 'block';
+        }
+    }
+    
+    // Close save modal
+    closeSaveModal() {
+        if (this.saveModal) {
+            this.saveModal.style.display = 'none';
+        }
     }
 }
 

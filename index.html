@@ -21,6 +21,9 @@
                 <label for="grid-cols">Columns:</label>
                 <input type="number" id="grid-cols" min="5" max="50" value="20">
                 <button id="update-grid">Update Grid</button>
+                <!-- Add import button -->
+                <button id="import-grid" title="Import a saved grid file">Import Grid</button>
+                <input type="file" id="grid-file-input" accept=".json" style="display: none;">
             </div>
         </header>
         
@@ -32,6 +35,8 @@
                 <div class="tool" data-tool="picker" title="Color Picker - Select a color from the grid">👆</div>
                 <div class="tool" data-tool="selection" title="Selection Tool - Select and move cells">◻️</div>
                 <div class="action-button" id="clear-all-btn" title="Clear All - Remove all colors from grid">🗑️</div>
+                <!-- Add save button -->
+                <div class="action-button" id="save-btn" title="Save your design">💾</div>
             </div>
             
             <!-- Selection context menu -->
@@ -82,6 +87,46 @@
                 <p><strong>Clear All Tool:</strong> Clears the entire grid with a single click.</p>
             </div>
         </main>
+    </div>
+    
+    <!-- Add save modal with improved layout -->
+    <div id="save-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h3>Save Your Design</h3>
+            
+            <!-- Common filename input at the top -->
+            <div class="common-filename-input">
+                <label for="grid-filename">Filename:</label>
+                <input type="text" id="grid-filename" value="my-crochet-design">
+            </div>
+
+            <div class="save-options">
+                <div class="save-option" id="save-image">
+                    <h4>Save as Image</h4>
+                    <p>Export your design as a JPEG image</p>
+                    <div class="resolution-options">
+                        <label>Resolution:</label>
+                        <select id="image-resolution">
+                            <option value="1">1x (Standard)</option>
+                            <option value="2">2x (High)</option>
+                            <option value="4">4x (Ultra)</option>
+                        </select>
+                    </div>
+                    <div class="grid-toggle">
+                        <input type="checkbox" id="include-grid-lines">
+                        <label for="include-grid-lines">Include grid lines</label>
+                    </div>
+                    <button id="save-as-image-btn">Save as Image</button>
+                </div>
+                <div class="save-option" id="save-grid-file">
+                    <h4>Save Grid File</h4>
+                    <p>Save your design as a file you can import later</p>
+                    <p class="description">Grid files (.json) can be imported back into the app to continue editing.</p>
+                    <button id="save-as-grid-btn">Save Grid File</button>
+                </div>
+            </div>
+        </div>
     </div>
     
     <!-- Load scripts in the right order -->

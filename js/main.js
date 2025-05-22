@@ -27,7 +27,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Make utility functions globally available
     window.validateGridSize = Utils.validateGridSize;
     window.exportGridAsImage = Utils.exportGridAsImage;
-    window.saveGridData = Utils.saveGridData;
+    window.saveGridFile = Utils.saveGridFile;
+    window.importGridFile = Utils.importGridFile;
     
     // 1. History
     window.app.history = new History();
