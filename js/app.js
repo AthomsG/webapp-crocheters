@@ -9,15 +9,8 @@ class App {
         this.updateGridBtn = document.getElementById('update-grid');
         this.clearAllBtn = document.getElementById('clear-all-btn');
         
-        // Remove references to buttons we've removed
-        // this.undoBtn = document.getElementById('undo-btn');
-        // this.redoBtn = document.getElementById('redo-btn');
-        // this.copyBtn = document.getElementById('copy-btn');
-        // this.cutBtn = document.getElementById('cut-btn');
-        // this.pasteBtn = document.getElementById('paste-btn');
-        
         // App state
-        this.currentColor = '#FF0000'; // Default to red instead of white
+        this.currentColor = '#000000'; // Changed from '#FF0000' to black as default
         this.clipboard = null;
         this.previousTool = null;
         this.mousePosition = { x: 0, y: 0, gridCell: null };
@@ -151,26 +144,43 @@ class App {
         });
     }
     
-    // Updated paste function with smoother behavior
+    // Updated paste function with better handling of repeated Cmd+V
     pasteFromClipboard() {
         if (!this.clipboard) return;
         
-        // Cancel any existing paste operation first
-        if (this.tools.move && this.tools.move.pastedData) {
-            this.tools.move.cancelPastePreview();
-        }
-        
         console.log("Initiating paste operation");
         
-        // Switch to move tool which handles the paste preview/placement
-        this.setActiveTool('move');
+        // Check if we're already in paste mode with the move tool
+        const alreadyInPasteMode = 
+            this.activeTool && 
+            this.activeTool.name === 'move' && 
+            this.tools.move && 
+            this.tools.move.pastedData;
         
-        // If we have a cell under the cursor, immediately start the paste preview
-        if (this.mousePosition.gridCell) {
-            // Use setTimeout to ensure the tool switch has fully processed
+        if (alreadyInPasteMode) {
+            // If already pasting, cancel the current paste operation first
+            console.log("Already in paste mode, resetting before starting new paste");
+            this.tools.move.cancelPastePreview();
+            
+            // Give a small delay to ensure cleanup completes
             setTimeout(() => {
-                this.tools.move.startPastePreview(this.mousePosition.gridCell);
-            }, 0);
+                // Then restart with a fresh paste operation
+                this.setActiveTool('move');
+                if (this.mousePosition.gridCell) {
+                    this.tools.move.startPastePreview(this.mousePosition.gridCell);
+                }
+            }, 50);
+        } else {
+            // Normal paste flow when not already in paste mode
+            this.setActiveTool('move');
+            
+            // If we have a cell under the cursor, immediately start the paste preview
+            if (this.mousePosition.gridCell) {
+                // Use setTimeout to ensure the tool switch has fully processed
+                setTimeout(() => {
+                    this.tools.move.startPastePreview(this.mousePosition.gridCell);
+                }, 0);
+            }
         }
     }
     
