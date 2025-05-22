@@ -399,9 +399,9 @@ h1 {
     background-color: #e8e8e8;
 }
 
-/* Save modal styles */
+/* Save modal styles - Fix display issue */
 .modal {
-    display: none;
+    display: none !important; /* Force modal to be hidden by default with !important */
     position: fixed;
     z-index: 1000;
     left: 0;
@@ -410,6 +410,11 @@ h1 {
     height: 100%;
     overflow: auto;
     background-color: rgba(0, 0, 0, 0.5);
+}
+
+/* Override display:none when modal should be visible */
+.modal.active {
+    display: block !important;
 }
 
 .modal-content {

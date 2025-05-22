@@ -329,6 +329,8 @@ class App {
                 this.includeGridLines.checked = false; // Default to no grid lines
             }
             
+            // Add active class FIRST then set display property
+            this.saveModal.classList.add('active');
             this.saveModal.style.display = 'block';
         }
     }
@@ -336,6 +338,7 @@ class App {
     // Close save modal
     closeSaveModal() {
         if (this.saveModal) {
+            this.saveModal.classList.remove('active');
             this.saveModal.style.display = 'none';
         }
     }

@@ -24,6 +24,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Enable debug mode for better logging
     window.debugMode = true;
     
+    // Ensure all modals are properly hidden at startup
+    document.querySelectorAll('.modal').forEach(modal => {
+        modal.style.display = 'none';
+        modal.classList.remove('active');
+    });
+    
     // Make utility functions globally available
     window.validateGridSize = Utils.validateGridSize;
     window.exportGridAsImage = Utils.exportGridAsImage;
