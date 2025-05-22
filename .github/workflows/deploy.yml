@@ -39,6 +39,13 @@ jobs:
             npm install
           fi
       
+      # Add a step to fix paths if needed
+      - name: Fix paths for GitHub Pages
+        run: |
+          echo "Preparing files for GitHub Pages deployment..."
+          # Create a .nojekyll file to prevent GitHub from processing the site with Jekyll
+          touch .nojekyll
+      
       - name: Setup Pages
         uses: actions/configure-pages@v4
       
