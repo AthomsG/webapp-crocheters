@@ -3,36 +3,41 @@ import Tool from './Tool.js';
 class EraserTool extends Tool {
     constructor() {
         super('eraser');
+        this.isErasing = false;
+        this.hasMadeChanges = false;
     }
     
     handleCellClick(cell) {
-        // Start tracking for undo history
-        app.history.startStroke('eraser', '#FFFFFF');
+        this.isErasing = true;
+        this.hasMadeChanges = false;
         
-        // Store the original color for undo
-        const oldColor = cell.dataset.color;
-        
-        // Apply eraser - use white instead of transparent
-        cell.style.backgroundColor = '#FFFFFF';
-        cell.dataset.color = '#FFFFFF';
-        
-        // Add to current stroke
-        app.history.addToStroke(cell, oldColor);
+        // Apply eraser if cell isn't already white
+        if (cell.dataset.color !== '#FFFFFF') {
+            cell.style.backgroundColor = '#FFFFFF';
+            cell.dataset.color = '#FFFFFF';
+            this.hasMadeChanges = true;
+        }
     }
     
     handleCellDrag(cell) {
-        // Only erase if not already white
+        if (!this.isErasing) return;
+        
+        // Apply eraser if cell isn't already white
         if (cell.dataset.color !== '#FFFFFF') {
-            const oldColor = cell.dataset.color;
             cell.style.backgroundColor = '#FFFFFF';
             cell.dataset.color = '#FFFFFF';
-            app.history.addToStroke(cell, oldColor);
+            this.hasMadeChanges = true;
         }
     }
     
     handleMouseUp() {
-        // End the stroke and add to history
-        app.history.endStroke();
+        if (this.isErasing && this.hasMadeChanges) {
+            // Capture state after erasing is complete
+            app.history.captureState('Eraser');
+            
+            this.isErasing = false;
+            this.hasMadeChanges = false;
+        }
     }
 }
 

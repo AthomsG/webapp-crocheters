@@ -14,29 +14,21 @@ import ColorPickerTool from './tools/ColorPickerTool.js';
 import SelectionTool from './tools/SelectionTool.js';
 import MoveTool from './tools/MoveTool.js';
 
+// Create a global app object first, before any DOM content loading
+window.app = new App();
+
 // Wait for DOM to be fully loaded before initializing
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Initializing Crochet Designer App...');
     
-    // Enable debug mode
-    window.debugMode = false; // Set to true when debugging
+    // Enable debug mode for better logging
+    window.debugMode = true;
     
     // Make utility functions globally available
     window.validateGridSize = Utils.validateGridSize;
     window.exportGridAsImage = Utils.exportGridAsImage;
     window.saveGridData = Utils.saveGridData;
     
-    // Create the app instance first
-    window.app = new App();
-    
-    // Add methods from App.prototype to app instance
-    Object.getOwnPropertyNames(App.prototype).forEach(name => {
-        if (name !== 'constructor') {
-            window.app[name] = App.prototype[name].bind(window.app);
-        }
-    });
-    
-    // Now initialize components in order
     // 1. History
     window.app.history = new History();
     
@@ -56,12 +48,23 @@ document.addEventListener('DOMContentLoaded', () => {
     // 4. Color palette
     window.app.colorPalette = new ColorPalette(window.app.colorPaletteElement);
     
-    // Set default active tool
-    window.app.activeTool = window.app.tools.pencil;
+    // Make the selection operations available globally
+    window.app.selectionOps = window.app.tools.selection.operations;
+    
+    // Initialize event listeners
     window.app.setupEventListeners();
-    window.app.setActiveTool('pencil');
+    
+    // Set default active tool EXPLICITLY to pencil
+    window.app.activeTool = window.app.tools.pencil;
+    
+    // Also update UI to reflect this
+    const pencilElement = document.querySelector('.tool[data-tool="pencil"]');
+    if (pencilElement) {
+        pencilElement.classList.add('active');
+    }
     
     console.log('App initialized successfully');
+    console.log('Active tool:', window.app.activeTool ? window.app.activeTool.name : 'none');
 });
 
 // Save colors before leaving the page

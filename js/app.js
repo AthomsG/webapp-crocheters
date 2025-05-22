@@ -7,22 +7,20 @@ class App {
         this.rowsInput = document.getElementById('grid-rows');
         this.colsInput = document.getElementById('grid-cols');
         this.updateGridBtn = document.getElementById('update-grid');
-        this.applySelectionBtn = document.getElementById('apply-selection');
-        this.clearSelectionBtn = document.getElementById('clear-selection');
-        this.undoBtn = document.getElementById('undo-btn');
-        this.redoBtn = document.getElementById('redo-btn');
-        this.copyBtn = document.getElementById('copy-btn');
-        this.cutBtn = document.getElementById('cut-btn');
-        this.pasteBtn = document.getElementById('paste-btn');
+        this.clearAllBtn = document.getElementById('clear-all-btn');
+        
+        // Remove references to buttons we've removed
+        // this.undoBtn = document.getElementById('undo-btn');
+        // this.redoBtn = document.getElementById('redo-btn');
+        // this.copyBtn = document.getElementById('copy-btn');
+        // this.cutBtn = document.getElementById('cut-btn');
+        // this.pasteBtn = document.getElementById('paste-btn');
         
         // App state
         this.currentColor = '#FF0000'; // Default to red instead of white
         this.clipboard = null;
         this.previousTool = null;
         this.mousePosition = { x: 0, y: 0, gridCell: null };
-        
-        // NOTE: We no longer initialize components here
-        // They will be initialized in main.js
     }
     
     setupEventListeners() {
@@ -42,58 +40,6 @@ class App {
             this.colsInput.value = cols;
         });
         
-        // Apply selection
-        if (this.applySelectionBtn) {
-            this.applySelectionBtn.addEventListener('click', () => {
-                if (this.activeTool.name === 'selection') {
-                    this.activeTool.applyColor();
-                    this.updateSelectionUI();
-                }
-            });
-        }
-        
-        // Clear selection
-        if (this.clearSelectionBtn) {
-            this.clearSelectionBtn.addEventListener('click', () => {
-                if (this.activeTool.name === 'selection') {
-                    this.activeTool.clearSelection();
-                    this.updateSelectionUI();
-                }
-            });
-        }
-        
-        // Undo/Redo buttons
-        if (this.undoBtn) {
-            this.undoBtn.addEventListener('click', () => this.history.undo());
-        }
-        
-        if (this.redoBtn) {
-            this.redoBtn.addEventListener('click', () => this.history.redo());
-        }
-        
-        // Copy/Cut/Paste buttons
-        if (this.copyBtn) {
-            this.copyBtn.addEventListener('click', () => {
-                if (this.tools.selection.selectedCells.size > 0) {
-                    this.tools.selection.copySelection();
-                }
-            });
-        }
-        
-        if (this.cutBtn) {
-            this.cutBtn.addEventListener('click', () => {
-                if (this.tools.selection.selectedCells.size > 0) {
-                    this.tools.selection.cutSelection();
-                }
-            });
-        }
-        
-        if (this.pasteBtn) {
-            this.pasteBtn.addEventListener('click', () => {
-                this.pasteFromClipboard(true); // true means immediate preview
-            });
-        }
-        
         // Add mouse position tracking
         document.addEventListener('mousemove', (e) => {
             this.mousePosition.x = e.clientX;
@@ -103,48 +49,63 @@ class App {
             const cell = document.elementFromPoint(e.clientX, e.clientY);
             if (cell && cell.classList.contains('grid-cell')) {
                 this.mousePosition.gridCell = cell;
-                
-                // Update paste preview if active
-                if (this.activeTool.name === 'move' && this.activeTool.pastedData) {
-                    this.activeTool.showPastePreview(cell);
-                }
             } else {
                 this.mousePosition.gridCell = null;
             }
         });
         
-        // Keyboard shortcuts
+        // Keyboard shortcuts - Make sure these work!
         document.addEventListener('keydown', (e) => {
             // Use metaKey for Mac and ctrlKey for Windows/Linux
             const ctrl = e.ctrlKey || e.metaKey;
             
             if (ctrl && e.key === 'z') {
                 e.preventDefault();
+                console.log("Ctrl+Z pressed - undoing");
                 this.history.undo();
             } else if ((ctrl && e.key === 'y') || (ctrl && e.shiftKey && e.key === 'z')) {
                 e.preventDefault();
+                console.log("Ctrl+Y pressed - redoing");
                 this.history.redo();
             } else if (ctrl && e.key === 'c') {
-                if (this.tools.selection.selectedCells.size > 0) {
+                if (this.tools.selection && this.tools.selection.operations && 
+                    this.tools.selection.selectedCells.size > 0) {
                     e.preventDefault();
                     this.tools.selection.copySelection();
                 }
             } else if (ctrl && e.key === 'x') {
-                if (this.tools.selection.selectedCells.size > 0) {
+                if (this.tools.selection && this.tools.selection.operations && 
+                    this.tools.selection.selectedCells.size > 0) {
                     e.preventDefault();
                     this.tools.selection.cutSelection();
                 }
             } else if (ctrl && e.key === 'v') {
                 e.preventDefault();
-                this.pasteFromClipboard(true); // true means immediate preview
-            } else if (e.key === 'Escape') {
-                // Cancel paste preview
-                if (this.activeTool.name === 'move' && this.activeTool.pastedData) {
-                    this.activeTool.cancelPastePreview();
-                    this.setActiveTool(this.previousTool || 'pencil');
+                if (this.clipboard) {
+                    this.pasteFromClipboard();
                 }
             }
         });
+        
+        // Add a context menu handler for selection tool
+        this.gridContainer.addEventListener('contextmenu', (e) => {
+            // If the selection tool is active, handle context menu
+            if (this.activeTool && this.activeTool.name === 'selection') {
+                if (typeof this.activeTool.handleContextMenu === 'function') {
+                    this.activeTool.handleContextMenu(e);
+                }
+            }
+        });
+        
+        // Add click event for the Clear All action button
+        if (this.clearAllBtn) {
+            this.clearAllBtn.addEventListener('click', () => {
+                // Show confirmation dialog
+                if (confirm('Are you sure you want to clear the entire grid?')) {
+                    this.clearGrid();
+                }
+            });
+        }
         
         // Set default active tool
         this.setActiveTool('pencil');
@@ -153,38 +114,32 @@ class App {
     }
     
     setActiveTool(toolName) {
-        if (!this.tools[toolName]) return;
+        console.log("Setting active tool to:", toolName);
         
-        // Store previous tool (but not if it's the move tool)
-        if (this.activeTool && this.activeTool.name !== 'move') {
+        if (!this.tools || !this.tools[toolName]) {
+            console.error("Tool not found:", toolName);
+            return;
+        }
+        
+        // Store previous tool
+        if (this.activeTool) {
             this.previousTool = this.activeTool.name;
         }
         
         // Handle tool-specific cleanup before changing tools
         if (this.activeTool) {
-            // Move tool cleanup
-            if (this.activeTool.name === 'move' && 
-                this.activeTool.pastedData && 
-                typeof this.activeTool.cancelPastePreview === 'function') {
-                this.activeTool.cancelPastePreview();
-            }
-            
             // Selection tool cleanup - ONLY for selection tool
             if (this.activeTool.name === 'selection') {
                 // Commit floating selection when changing tools
                 if (typeof this.activeTool.mergeFloatingLayer === 'function') {
                     this.activeTool.mergeFloatingLayer();
                 }
-                
-                // Cancel any ongoing selection operations
-                if (typeof this.activeTool.cancelOperation === 'function') {
-                    this.activeTool.cancelOperation();
-                }
             }
         }
         
         // Update the active tool
         this.activeTool = this.tools[toolName];
+        console.log("Active tool updated to:", this.activeTool ? this.activeTool.name : "undefined");
         
         // Update the UI
         this.toolElements.forEach(toolElement => {
@@ -194,45 +149,37 @@ class App {
                 toolElement.classList.remove('active');
             }
         });
-        
-        // Show/hide selection buttons
-        this.updateSelectionUI();
     }
     
-    // Enhanced paste function with immediate preview
-    pasteFromClipboard(immediatePreview = false) {
+    // Updated paste function with smoother behavior
+    pasteFromClipboard() {
         if (!this.clipboard) return;
         
-        // Switch to move tool
+        // Cancel any existing paste operation first
+        if (this.tools.move && this.tools.move.pastedData) {
+            this.tools.move.cancelPastePreview();
+        }
+        
+        console.log("Initiating paste operation");
+        
+        // Switch to move tool which handles the paste preview/placement
         this.setActiveTool('move');
         
-        // If immediate preview requested and we have a cell under the cursor
-        if (immediatePreview && this.mousePosition.gridCell) {
-            // Start paste preview immediately under the cursor
-            this.activeTool.startPastePreview(this.mousePosition.gridCell);
+        // If we have a cell under the cursor, immediately start the paste preview
+        if (this.mousePosition.gridCell) {
+            // Use setTimeout to ensure the tool switch has fully processed
+            setTimeout(() => {
+                this.tools.move.startPastePreview(this.mousePosition.gridCell);
+            }, 0);
         }
-        
-        // The move tool will now show the preview as the mouse moves
     }
     
+    // Add back the updateSelectionUI method (simplified since we removed the buttons)
     updateSelectionUI() {
-        if (this.applySelectionBtn && this.clearSelectionBtn) {
-            const isSelectionTool = this.activeTool.name === 'selection';
-            const hasSelectedCells = isSelectionTool && this.activeTool.selectedCells.size > 0;
-            
-            this.applySelectionBtn.classList.toggle('active', hasSelectedCells);
-            this.clearSelectionBtn.classList.toggle('active', hasSelectedCells);
-        }
-        
-        if (this.copyBtn && this.cutBtn) {
-            const hasSelectedCells = this.tools.selection.selectedCells.size > 0;
-            this.copyBtn.disabled = !hasSelectedCells;
-            this.cutBtn.disabled = !hasSelectedCells;
-        }
-        
-        if (this.pasteBtn) {
-            this.pasteBtn.disabled = !this.clipboard;
-        }
+        // This method used to update button states, but since we removed the buttons,
+        // we'll keep it as an empty method for compatibility
+        // If keyboard shortcuts need to be disabled based on selection state,
+        // that logic can be added here in the future
     }
     
     setCurrentColor(color) {
@@ -253,31 +200,34 @@ class App {
     }
     
     clearGrid() {
-        // Store current state for undo
-        const cellStates = [];
-        this.grid.cells.forEach(cell => {
-            if (cell.dataset.color !== '#FFFFFF') {
-                cellStates.push({
-                    row: parseInt(cell.dataset.row),
-                    col: parseInt(cell.dataset.col),
-                    color: cell.dataset.color
-                });
-            }
-        });
+        console.log("Clearing grid");
         
-        if (cellStates.length > 0) {
-            // Record this action for undo
-            this.history.addAction({
-                type: 'clearGrid',
-                cellStates: cellStates
-            });
+        // If we have an active selection or floating layer, commit/clear it first
+        if (this.tools.selection && this.tools.selection.floatingLayer.active) {
+            this.tools.selection.clearSelection();
         }
+        
+        // Track if any changes were made
+        let madeChanges = false;
         
         // Clear all cells
         this.grid.cells.forEach(cell => {
-            cell.style.backgroundColor = '#FFFFFF';
-            cell.dataset.color = '#FFFFFF';
+            if (cell.dataset.color !== '#FFFFFF') {
+                madeChanges = true;
+                cell.style.backgroundColor = '#FFFFFF';
+                cell.dataset.color = '#FFFFFF';
+            }
         });
+        
+        // Only capture state if changes were made
+        if (madeChanges) {
+            this.history.captureState("Clear all");
+        }
+        
+        // Switch to pencil tool
+        this.setActiveTool('pencil');
+        
+        console.log("Grid cleared");
     }
 }
 

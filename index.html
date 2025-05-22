@@ -29,21 +29,19 @@
                 <div class="tool" data-tool="fill" title="Fill Tool - Fill connected areas">🪣</div>
                 <div class="tool" data-tool="picker" title="Color Picker - Select a color from the grid">👆</div>
                 <div class="tool" data-tool="selection" title="Selection Tool - Select and move cells">◻️</div>
-                <div class="tool" data-tool="move" title="Paste Tool - Place copied/cut content">📌</div>
+                <div class="action-button" id="clear-all-btn" title="Clear All - Remove all colors from grid">🗑️</div>
             </div>
             
-            <div class="tool-buttons">
-                <button id="undo-btn" class="tool-btn" title="Undo (Ctrl+Z)">↩️ Undo</button>
-                <button id="redo-btn" class="tool-btn" title="Redo (Ctrl+Y)">↪️ Redo</button>
-                <button id="copy-btn" class="tool-btn" title="Copy Selection (Ctrl+C)">📋 Copy</button>
-                <button id="cut-btn" class="tool-btn" title="Cut Selection (Ctrl+X)">✂️ Cut</button>
-                <button id="paste-btn" class="tool-btn" title="Paste (Ctrl+V)">📌 Paste</button>
-                <button id="clear-btn" class="tool-btn" onclick="app.clearGrid()">🗑️ Clear All</button>
-            </div>
-            
-            <div class="action-buttons">
-                <button id="apply-selection" class="apply-selection-btn">Apply Color to Selection</button>
-                <button id="clear-selection" class="apply-selection-btn">Clear Selection</button>
+            <!-- Selection context menu -->
+            <div id="selection-context-menu" class="context-menu">
+                <ul>
+                    <li data-action="copy">📋 Copy</li>
+                    <li data-action="cut">✂️ Cut</li>
+                    <li data-action="fill">🎨 Fill with Color</li>
+                    <li data-action="clear">🗑️ Clear</li>
+                    <li data-action="flip-h">↔️ Flip Horizontally</li>
+                    <li data-action="flip-v">↕️ Flip Vertically</li>
+                </ul>
             </div>
             
             <div id="grid-container"></div>
@@ -73,14 +71,13 @@
                     <li><kbd>Ctrl</kbd>+<kbd>C</kbd> Copy selection</li>
                     <li><kbd>Ctrl</kbd>+<kbd>X</kbd> Cut selection</li>
                     <li><kbd>Ctrl</kbd>+<kbd>V</kbd> Paste</li>
-                    <li><kbd>Esc</kbd> Cancel paste</li>
                 </ul>
             </div>
             
             <div class="tool-help">
                 <h3>Tool Tips</h3>
-                <p><strong>Selection Tool:</strong> Click and drag to select area. Click inside selection and drag to move it.</p>
-                <p><strong>Paste Tool:</strong> Click to position pasted content, press ESC to cancel.</p>
+                <p><strong>Selection Tool:</strong> Click and drag to select area. Right-click inside selection for options.</p>
+                <p><strong>Clear All Tool:</strong> Clears the entire grid with a single click.</p>
             </div>
         </main>
     </div>

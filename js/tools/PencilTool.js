@@ -3,36 +3,41 @@ import Tool from './Tool.js';
 class PencilTool extends Tool {
     constructor() {
         super('pencil');
+        this.isDrawing = false;
+        this.hasMadeChanges = false;
     }
     
     handleCellClick(cell) {
-        // Start tracking for undo history
-        app.history.startStroke('pencil', app.currentColor);
+        this.isDrawing = true;
+        this.hasMadeChanges = false;
         
-        // Store the original color for undo
-        const oldColor = cell.dataset.color;
-        
-        // Apply new color
-        cell.style.backgroundColor = app.currentColor;
-        cell.dataset.color = app.currentColor;
-        
-        // Add to current stroke
-        app.history.addToStroke(cell, oldColor);
+        // Apply color if different
+        if (cell.dataset.color !== app.currentColor) {
+            cell.style.backgroundColor = app.currentColor;
+            cell.dataset.color = app.currentColor;
+            this.hasMadeChanges = true;
+        }
     }
     
     handleCellDrag(cell) {
-        // Only change color if it's different from current
+        if (!this.isDrawing) return;
+        
+        // Apply color if different
         if (cell.dataset.color !== app.currentColor) {
-            const oldColor = cell.dataset.color;
             cell.style.backgroundColor = app.currentColor;
             cell.dataset.color = app.currentColor;
-            app.history.addToStroke(cell, oldColor);
+            this.hasMadeChanges = true;
         }
     }
     
     handleMouseUp() {
-        // End the stroke and add to history
-        app.history.endStroke();
+        if (this.isDrawing && this.hasMadeChanges) {
+            // Capture state after the drawing operation is complete
+            app.history.captureState('Pencil drawing');
+            
+            this.isDrawing = false;
+            this.hasMadeChanges = false;
+        }
     }
 }
 

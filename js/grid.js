@@ -25,12 +25,31 @@ class Grid {
             cell.addEventListener('mouseover', (e) => this.handleMouseOver(e));
             cell.addEventListener('click', (e) => this.handleClick(e));
             
+            // Add mousemove listener specifically for paste preview updates
+            cell.addEventListener('mousemove', (e) => {
+                if (app.activeTool && app.activeTool.name === 'move' && app.activeTool.pastedData) {
+                    app.activeTool.showPastePreview(cell);
+                }
+            });
+            
+            // Prevent default context menu on grid cells
+            cell.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                return false;
+            });
+            
             this.container.appendChild(cell);
             this.cells.push(cell);
         }
         
         // Prevent drag selection
         this.container.addEventListener('mousedown', (e) => e.preventDefault());
+        
+        // Prevent context menu on the entire grid
+        this.container.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            return false;
+        });
         
         // Add global mouseup event to handle drawing outside the grid
         document.addEventListener('mouseup', (e) => this.handleMouseUp(e));
@@ -39,19 +58,28 @@ class Grid {
     handleMouseDown(event) {
         this.isDrawing = true;
         const cell = event.target;
-        app.activeTool.handleCellClick(cell);
+        
+        // Check if activeTool exists before calling methods
+        if (app && app.activeTool && typeof app.activeTool.handleCellClick === 'function') {
+            app.activeTool.handleCellClick(cell);
+        } else {
+            console.error("Missing activeTool in handleMouseDown", 
+                          app ? (app.activeTool ? "Has tool" : "No tool") : "No app");
+        }
     }
     
     handleMouseOver(event) {
         if (this.isDrawing) {
             const cell = event.target;
-            app.activeTool.handleCellDrag(cell);
+            if (app && app.activeTool && typeof app.activeTool.handleCellDrag === 'function') {
+                app.activeTool.handleCellDrag(cell);
+            }
         }
     }
     
     handleClick(event) {
         // For tools that need a simple click (especially paste)
-        if (app.activeTool.name === 'move' && app.clipboard) {
+        if (app && app.activeTool && app.activeTool.name === 'move' && app.clipboard) {
             const cell = event.target;
             if (cell.classList.contains('grid-cell')) {
                 app.activeTool.handleCellClick(cell);
@@ -62,12 +90,13 @@ class Grid {
         event.stopPropagation();
     }
     
+    // Update the handleMouseUp method to ensure proper method calling
     handleMouseUp(event) {
         if (this.isDrawing) {
             this.isDrawing = false;
             
             // If we have a tool with a mouseUp handler, call it
-            if (app.activeTool.handleMouseUp) {
+            if (app.activeTool && typeof app.activeTool.handleMouseUp === 'function') {
                 try {
                     let cell = null;
                     
@@ -76,17 +105,14 @@ class Grid {
                         event.target.classList.contains('grid-cell')) {
                         cell = event.target;
                     } else if (document.querySelector('.grid-cell.move-preview')) {
-                        // If we're dropping outside the grid but have a preview, use the last preview cell
                         cell = document.querySelector('.grid-cell.move-preview');
                     }
                     
-                    app.activeTool.handleMouseUp(cell);
+                    // Explicitly call with the correct 'this' context
+                    app.activeTool.handleMouseUp.call(app.activeTool, cell);
                 } catch (error) {
                     console.error("Error in mouseUp handler:", error);
-                    // Reset to safe state on error
-                    if (app.activeTool.name === 'move' && app.activeTool.resetTool) {
-                        app.activeTool.resetTool();
-                    }
+                    console.error(error.stack); // Add stack trace for better debugging
                 }
             }
         }

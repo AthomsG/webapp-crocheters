@@ -56,18 +56,25 @@ h1 {
     gap: 10px;
 }
 
-.tool {
+.tool, .action-button {
     cursor: pointer;
     padding: 10px;
     font-size: 24px;
     border: 1px solid #ddd;
     background-color: #f9f9f9;
     border-radius: 5px;
+    transition: all 0.2s ease-in-out;
+}
+
+.tool:hover, .action-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 3px 5px rgba(0,0,0,0.1);
 }
 
 .tool.active {
-    background-color: #ddd;
-    border: 1px solid #999;
+    border: 2px solid #4CAF50;
+    box-shadow: 0 0 5px rgba(76, 175, 80, 0.3);
+    background-color: #f9f9f9; /* Keep the same background */
 }
 
 #grid-container {
@@ -85,7 +92,7 @@ h1 {
     cursor: pointer;
 }
 
-/* Selection tool specific styles */
+/* Selection tool specific styles - Keep clean boundaries without interior tinting */
 .grid-cell.selected {
     /* Remove existing outline that appears on every cell */
     outline: none;
@@ -93,7 +100,7 @@ h1 {
     z-index: 1;
 }
 
-/* Add new classes for selection borders */
+/* Add new classes for selection borders - Make them more visible */
 .grid-cell.selected-top {
     border-top: 2px dashed #ff5722;
 }
@@ -279,6 +286,16 @@ h1 {
     cursor: not-allowed;
 }
 
+/* Remove the special red hover effect for the clear button */
+.action-button:hover {
+    background-color: #f9f9f9; /* Same as normal state */
+}
+
+.action-button:active {
+    background-color: #f0f0f0; /* Slightly darker when actively pressed */
+    transform: translateY(0); /* Remove the lift effect when clicking */
+}
+
 /* Keyboard shortcuts display */
 .keyboard-shortcuts {
     margin-top: 20px;
@@ -337,8 +354,47 @@ h1 {
     font-size: 14px;
     z-index: 1000;
     transition: opacity 0.5s ease;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.3);
 }
 
 .paste-notification.fade-out {
     opacity: 0;
+}
+
+/* Context menu for selections */
+.context-menu {
+    position: absolute;
+    display: none;
+    background-color: white;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    z-index: 1000;
+    padding: 5px 0;
+    min-width: 180px;
+}
+
+.context-menu.active {
+    display: block;
+}
+
+.context-menu ul {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+}
+
+.context-menu li {
+    padding: 8px 15px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    user-select: none;
+}
+
+.context-menu li:hover {
+    background-color: #f0f0f0;
+}
+
+.context-menu li:active {
+    background-color: #e8e8e8;
 }

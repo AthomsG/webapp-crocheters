@@ -1,4 +1,5 @@
 import Tool from './Tool.js';
+import SelectionOperations from './SelectionOperations.js';
 
 class SelectionTool extends Tool {
     constructor() {
@@ -17,59 +18,84 @@ class SelectionTool extends Tool {
             content: [], // Array of {relRow, relCol, color} (positions relative to top-left)
             originalCells: [] // Store positions and colors that were cleared to create this selection
         };
+        
+        // Initialize operations helper
+        this.operations = new SelectionOperations(this);
+        
+        // DON'T bind methods in the constructor - this causes issues
+        // with method definition order. Fix binding in a different way.
     }
     
+    // Ensure mouse down handler works properly
     handleCellClick(cell) {
-        if (!cell.classList.contains('grid-cell')) return;
+        if (!cell || !cell.classList.contains('grid-cell')) return;
         
-        // If clicking inside an existing selection, start moving it
-        if (this.floatingLayer.active && this.selectedCells.has(cell)) {
-            this.startMovingFloatingLayer(cell);
-            return;
+        console.log("SelectionTool: handleCellClick called");
+        
+        // Left-click behavior - don't show context menu
+        if (!window.event || window.event.button === 0) {
+            // If we have a floating selection and clicked outside it,
+            // merge it down before starting a new selection
+            if (this.floatingLayer.active && !this.selectedCells.has(cell)) {
+                this.mergeFloatingLayer();
+            }
+            
+            // If clicking inside an existing selection, start moving it
+            if (this.floatingLayer.active && this.selectedCells.has(cell)) {
+                this.startMovingFloatingLayer(cell);
+                return;
+            }
+            
+            // Start a new selection
+            this.clearSelection();
+            this.isSelecting = true;
+            this.startCell = cell;
+            this.selectionRect.startRow = parseInt(cell.dataset.row);
+            this.selectionRect.startCol = parseInt(cell.dataset.col);
+            
+            // Initial selection of the first cell
+            this.updateSelectionRectangle(cell);
         }
-        
-        // If we have a floating selection and clicked outside it,
-        // merge it down before starting a new selection
-        if (this.floatingLayer.active) {
-            this.mergeFloatingLayer();
-        }
-        
-        // Start a new selection
-        this.clearSelection();
-        this.isSelecting = true;
-        this.startCell = cell;
-        this.selectionRect.startRow = parseInt(cell.dataset.row);
-        this.selectionRect.startCol = parseInt(cell.dataset.col);
     }
     
     startMovingFloatingLayer(cell) {
+        console.log("DEBUG: Starting floating layer move");
         this.isMoving = true;
         this.moveStartPosition = {
             row: parseInt(cell.dataset.row),
             col: parseInt(cell.dataset.col)
         };
+        
+        // Capture the state BEFORE moving for undo
+        if (this.operations) {
+            this._beforeMoveSnapshot = this.operations.captureFloatingLayerSnapshot("Before Move");
+            console.log("DEBUG: Captured pre-move state");
+        } else {
+            console.error("DEBUG: SelectionOperations not available");
+        }
     }
     
+    // Make sure drag handler properly updates the selection
     handleCellDrag(cell) {
-        if (!cell.classList.contains('grid-cell')) return;
+        if (!cell || !cell.classList.contains('grid-cell')) return;
         
         if (this.isSelecting) {
+            console.log("SelectionTool: updating selection rectangle during drag");
             this.updateSelectionRectangle(cell);
         } 
         else if (this.isMoving && this.floatingLayer.active) {
+            console.log("SelectionTool: moving floating layer during drag");
             this.moveFloatingLayer(cell);
         }
     }
     
+    // Improved selection rectangle update with better cleanup
     updateSelectionRectangle(cell) {
         this.selectionRect.endRow = parseInt(cell.dataset.row);
         this.selectionRect.endCol = parseInt(cell.dataset.col);
         
-        // Clear previous selection
-        document.querySelectorAll('.grid-cell.selected').forEach(cell => {
-            cell.classList.remove('selected', 'selected-top', 'selected-right', 'selected-bottom', 'selected-left');
-        });
-        this.selectedCells.clear();
+        // Clear previous selection more thoroughly
+        this.clearSelectionVisuals();
         
         // Calculate bounds
         const minRow = Math.min(this.selectionRect.startRow, this.selectionRect.endRow);
@@ -88,11 +114,7 @@ class SelectionTool extends Tool {
             }
         }
         
-        // Add border indicators to the edges
-        this.addBorderIndicators(minRow, maxRow, minCol, maxCol);
-    }
-    
-    addBorderIndicators(minRow, maxRow, minCol, maxCol) {
+        // Add border indicators to the edges - directly implement it here to avoid the function call issue
         this.selectedCells.forEach(cell => {
             const row = parseInt(cell.dataset.row);
             const col = parseInt(cell.dataset.col);
@@ -104,131 +126,26 @@ class SelectionTool extends Tool {
         });
     }
     
-    // Create a floating layer from the current selection
-    createFloatingLayer() {
-        if (this.floatingLayer.active) {
-            this.mergeFloatingLayer(); // Merge any existing floating layer first
-        }
-        
-        // Calculate selection bounds
-        const cells = Array.from(this.selectedCells);
-        const rows = cells.map(cell => parseInt(cell.dataset.row));
-        const cols = cells.map(cell => parseInt(cell.dataset.col));
-        
-        const minRow = Math.min(...rows);
-        const maxRow = Math.max(...rows);
-        const minCol = Math.min(...cols);
-        const maxCol = Math.max(...cols);
-        
-        // Initialize floating layer
-        this.floatingLayer.active = true;
-        this.floatingLayer.position = { row: minRow, col: minCol };
-        this.floatingLayer.content = [];
-        this.floatingLayer.originalCells = [];
-        
-        // Store cells' content in the floating layer and clear original cells
-        const matrixChanges = [];
-        
-        this.selectedCells.forEach(cell => {
-            const row = parseInt(cell.dataset.row);
-            const col = parseInt(cell.dataset.col);
-            const color = cell.dataset.color;
-            
-            // Store in floating layer (as relative positions)
-            this.floatingLayer.content.push({
-                relRow: row - minRow,
-                relCol: col - minCol,
-                color: color
-            });
-            
-            // Record original cell for undo
-            this.floatingLayer.originalCells.push({
-                row: row,
-                col: col,
-                color: color
-            });
-            
-            // Record for history
-            if (color !== '#FFFFFF') {
-                matrixChanges.push({
-                    cell: cell,
-                    oldColor: color,
-                    newColor: '#FFFFFF'
-                });
-            }
-            
-            // Clear original cell
-            cell.style.backgroundColor = '#FFFFFF';
-            cell.dataset.color = '#FFFFFF';
-        });
-        
-        // Record this change in history
-        if (matrixChanges.length > 0) {
-            app.history.addMatrixAction(matrixChanges);
-        }
-        
-        // Clear the selection visuals since we'll now have floating content
-        this.selectedCells.clear();
+    // New method to clear only selection visuals (not floating layer)
+    clearSelectionVisuals() {
+        // Remove selection classes from all grid cells
         document.querySelectorAll('.grid-cell.selected').forEach(cell => {
-            cell.classList.remove('selected', 'selected-top', 'selected-right', 'selected-bottom', 'selected-left');
+            cell.classList.remove(
+                'selected', 
+                'selected-top', 
+                'selected-right', 
+                'selected-bottom', 
+                'selected-left'
+            );
         });
         
-        // Show the floating selection
-        this.showFloatingLayer();
+        // Clear the selection set
+        this.selectedCells.clear();
     }
     
-    // Display the floating layer at its current position
-    showFloatingLayer() {
-        // First clear any existing floating layer visuals
-        this.clearFloatingVisuals();
-        
-        // Create visual representation at current position
-        const baseRow = this.floatingLayer.position.row;
-        const baseCol = this.floatingLayer.position.col;
-        
-        // Calculate bounds for the selection border
-        let minRow = Infinity, maxRow = -Infinity, minCol = Infinity, maxCol = -Infinity;
-        
-        // Apply each floating content item
-        this.floatingLayer.content.forEach(item => {
-            const row = baseRow + item.relRow;
-            const col = baseCol + item.relCol;
-            
-            // Update bounds
-            minRow = Math.min(minRow, row);
-            maxRow = Math.max(maxRow, row);
-            minCol = Math.min(minCol, col);
-            maxCol = Math.max(maxCol, col);
-            
-            const cell = app.grid.getCellAt(row, col);
-            if (cell) {
-                // For VISUAL DISPLAY only:
-                // Save current background state if not already saved
-                if (!cell.hasAttribute('data-orig-bg')) {
-                    cell.setAttribute('data-orig-bg', cell.dataset.color);
-                }
-                
-                // Add to tracked cells
-                this.selectedCells.add(cell);
-                
-                // Add visual classes
-                cell.classList.add('selected');
-                cell.classList.add('floating-layer');
-                
-                // Show the floating content color VISUALLY only
-                if (item.color !== '#FFFFFF') {
-                    cell.style.backgroundColor = item.color;
-                }
-            }
-        });
-        
-        // Add selection borders
-        this.addBorderIndicators(minRow, maxRow, minCol, maxCol);
-    }
-    
-    // Clear only the visual representation of the floating layer
+    // Improved floating layer cleanup - more thorough
     clearFloatingVisuals() {
-        // Restore background appearance of all cells with the floating-layer class
+        // First, restore original appearance of floating layer cells
         document.querySelectorAll('.grid-cell.floating-layer').forEach(cell => {
             // Restore original visual state
             if (cell.hasAttribute('data-orig-bg')) {
@@ -236,17 +153,101 @@ class SelectionTool extends Tool {
                 cell.removeAttribute('data-orig-bg');
             }
             
-            // Remove visual classes
-            cell.classList.remove('floating-layer', 'selected', 
-                                 'selected-top', 'selected-right', 
-                                 'selected-bottom', 'selected-left');
+            // Remove floating layer class
+            cell.classList.remove('floating-layer');
         });
         
+        // Then, clear all selection-related classes from ALL cells
+        document.querySelectorAll('.grid-cell.selected, .grid-cell.selected-top, .grid-cell.selected-right, .grid-cell.selected-bottom, .grid-cell.selected-left').forEach(cell => {
+            cell.classList.remove(
+                'selected', 
+                'selected-top', 
+                'selected-right', 
+                'selected-bottom', 
+                'selected-left'
+            );
+        });
+        
+        // Clear our tracking set
         this.selectedCells.clear();
     }
     
+    // Improved floating layer visual display to show full outline while staying minimal
+    showFloatingLayer() {
+        console.log("DEBUG: showFloatingLayer called");
+        
+        if (!this.floatingLayer.active || this.floatingLayer.content.length === 0) {
+            console.log("DEBUG: No floating layer to show");
+            return;
+        }
+        
+        // First ensure ALL previous visuals are cleared
+        this.clearFloatingVisuals();
+        
+        // Get base position
+        const baseRow = this.floatingLayer.position.row;
+        const baseCol = this.floatingLayer.position.col;
+        
+        // Calculate bounds for ALL cells in the selection, not just colored ones
+        let minRow = Infinity, maxRow = -Infinity;
+        let minCol = Infinity, maxCol = -Infinity;
+        
+        // Calculate bounds for ALL cells, including white ones
+        this.floatingLayer.content.forEach(item => {
+            const row = baseRow + item.relRow;
+            const col = baseCol + item.relCol;
+            
+            minRow = Math.min(minRow, row);
+            maxRow = Math.max(maxRow, row);
+            minCol = Math.min(minCol, col);
+            maxCol = Math.max(maxCol, col);
+        });
+        
+        // Show ALL cells in the selection, mark colored ones specially
+        this.floatingLayer.content.forEach(item => {
+            const row = baseRow + item.relRow;
+            const col = baseCol + item.relCol;
+            const cell = app.grid.getCellAt(row, col);
+            
+            if (cell) {
+                // Store original background for restoration
+                if (!cell.hasAttribute('data-orig-bg')) {
+                    cell.setAttribute('data-orig-bg', cell.dataset.color);
+                }
+                
+                // Add ALL cells to selection
+                this.selectedCells.add(cell);
+                cell.classList.add('selected');
+                
+                // Apply visual styling - for colored cells, show the color
+                if (item.color !== '#FFFFFF') {
+                    cell.classList.add('floating-layer');
+                    cell.style.backgroundColor = item.color;
+                }
+            }
+        });
+        
+        // Apply border indicators to ALL selected cells
+        if (minRow !== Infinity) {
+            this.selectedCells.forEach(cell => {
+                const row = parseInt(cell.dataset.row);
+                const col = parseInt(cell.dataset.col);
+                
+                if (row === minRow) cell.classList.add('selected-top');
+                if (col === maxCol) cell.classList.add('selected-right');
+                if (row === maxRow) cell.classList.add('selected-bottom');
+                if (col === minCol) cell.classList.add('selected-left');
+            });
+        }
+        
+        console.log(`DEBUG: Showed floating layer with ${this.selectedCells.size} cells`);
+    }
+    
+    // Record when moving the floating layer
     moveFloatingLayer(cell) {
         if (!this.isMoving || !this.floatingLayer.active) return;
+        
+        console.log("DEBUG: moveFloatingLayer called");
         
         // Calculate offset from drag start position
         const currentRow = parseInt(cell.dataset.row);
@@ -255,135 +256,130 @@ class SelectionTool extends Tool {
         const rowOffset = currentRow - this.moveStartPosition.row;
         const colOffset = currentCol - this.moveStartPosition.col;
         
+        if (rowOffset === 0 && colOffset === 0) {
+            // No actual movement, skip processing
+            return;
+        }
+        
+        // Save the old position for history
+        const oldPosition = {
+            row: this.floatingLayer.position.row,
+            col: this.floatingLayer.position.col
+        };
+        
         // Update floating layer position
         this.floatingLayer.position = {
-            row: this.floatingLayer.position.row + rowOffset,
-            col: this.floatingLayer.position.col + colOffset
+            row: oldPosition.row + rowOffset,
+            col: oldPosition.col + colOffset
         };
         
         // Update moveStartPosition for next drag movement
         this.moveStartPosition = { row: currentRow, col: currentCol };
         
-        // Show the floating selection at the new position
+        // Update the visual representation immediately
         this.showFloatingLayer();
+        
+        console.log("DEBUG: Moved floating layer to", this.floatingLayer.position);
     }
     
+    // Enhanced handleMouseUp - remove duplicate state capture
     handleMouseUp(cell) {
+        console.log("SelectionTool: handleMouseUp called", this.isSelecting, this.isMoving);
+        
         if (this.isSelecting) {
             this.isSelecting = false;
             
             // If we've selected something, convert it to a floating layer
             if (this.selectedCells.size > 0) {
                 this.createFloatingLayer();
+                // Note: state is already captured inside createFloatingLayer
+                // No need for another captureState call here
             }
             
             app.updateSelectionUI();
         }
         else if (this.isMoving) {
             this.isMoving = false;
-            // When we stop moving, just update the UI - the floating layer stays active
+            
+            // Create a history snapshot after moving
+            app.history.captureState('Move selection');
+            
             app.updateSelectionUI();
         }
     }
     
-    // Merge the floating layer into the background grid
+    // Simplified mergeFloatingLayer for new behavior
     mergeFloatingLayer() {
-        if (!this.floatingLayer.active) return;
+        console.log("DEBUG: mergeFloatingLayer called");
         
-        // Get the current floating layer position
+        if (!this.floatingLayer.active) {
+            console.log("DEBUG: No active floating layer to merge");
+            return;
+        }
+        
+        // Capture state before merging
+        app.history.captureState('Before merge layer');
+        
+        // Get floating layer position
         const baseRow = this.floatingLayer.position.row;
         const baseCol = this.floatingLayer.position.col;
         
-        // Create history records
-        const matrixChanges = [];
+        // Flag to track changes
+        let madeChanges = false;
         
-        // Clear the visual representation first
+        // First clear visuals
         this.clearFloatingVisuals();
         
-        // Apply floating content to the grid
+        // Apply floating content to grid, but only for non-white cells
         this.floatingLayer.content.forEach(item => {
             const row = baseRow + item.relRow;
             const col = baseCol + item.relCol;
             const cell = app.grid.getCellAt(row, col);
             
+            // Only apply changes for colored cells, ignore white/background
             if (cell && item.color !== '#FFFFFF') {
-                // Record the change for history
-                matrixChanges.push({
-                    cell: cell,
-                    oldColor: cell.dataset.color,
-                    newColor: item.color
-                });
-                
-                // Apply the color to the grid (BOTH visual and data)
+                // Apply permanent change to the cell
                 cell.style.backgroundColor = item.color;
                 cell.dataset.color = item.color;
+                madeChanges = true;
             }
         });
-        
-        // Record changes in history
-        if (matrixChanges.length > 0) {
-            app.history.addMatrixAction(matrixChanges);
-        }
         
         // Reset floating layer state
         this.floatingLayer.active = false;
         this.floatingLayer.content = [];
         this.floatingLayer.originalCells = [];
-    }
-    
-    applyColor() {
-        if (this.selectedCells.size === 0 && !this.floatingLayer.active) return;
         
-        // If we have a floating layer, apply color to it
-        if (this.floatingLayer.active) {
-            // Merge the current floating layer first
-            this.mergeFloatingLayer();
-            
-            // Then apply color to the selected cells as normal
-            this.applyColorToSelection();
-            
-            // Recreate the floating layer with the new color
-            if (this.selectedCells.size > 0) {
-                this.createFloatingLayer();
-            }
-        } else {
-            this.applyColorToSelection();
+        // If we made changes, capture the state
+        if (madeChanges) {
+            app.history.captureState('Merge floating layer');
         }
+        
+        console.log("DEBUG: Floating layer merged successfully");
     }
     
-    applyColorToSelection() {
-        const matrixChanges = [];
-        
-        this.selectedCells.forEach(cell => {
-            const oldColor = cell.dataset.color;
-            
-            matrixChanges.push({
-                cell: cell,
-                oldColor: oldColor,
-                newColor: app.currentColor
-            });
-            
-            // Apply new color
-            cell.style.backgroundColor = app.currentColor;
-            cell.dataset.color = app.currentColor;
-        });
-        
-        // Record in history
-        if (matrixChanges.length > 0) {
-            app.history.addMatrixAction(matrixChanges);
-        }
-    }
-    
+    // This method MUST remain in SelectionTool class - DO NOT move to operations
     clearSelection() {
         // If we have a floating layer, merge it down
         if (this.floatingLayer.active) {
             this.mergeFloatingLayer();
         }
         
-        // Clear selection visuals
-        document.querySelectorAll('.grid-cell.selected').forEach(cell => {
-            cell.classList.remove('selected', 'selected-top', 'selected-right', 'selected-bottom', 'selected-left');
-            cell.classList.remove('floating-layer');
+        // Clear ALL selection visuals and classes
+        document.querySelectorAll('.grid-cell').forEach(cell => {
+            cell.classList.remove(
+                'selected', 
+                'selected-top', 
+                'selected-right', 
+                'selected-bottom', 
+                'selected-left',
+                'floating-layer'
+            );
+            
+            // Remove any stored original background
+            if (cell.hasAttribute('data-orig-bg')) {
+                cell.removeAttribute('data-orig-bg');
+            }
         });
         
         // Reset state
@@ -395,62 +391,112 @@ class SelectionTool extends Tool {
         app.updateSelectionUI();
     }
     
+    // Delegation methods to SelectionOperations
     copySelection() {
-        // If we have a floating layer, use that for copying
-        if (this.floatingLayer && this.floatingLayer.active) {
-            const bounds = this.getFloatingLayerBounds();
-            const width = bounds.maxCol - bounds.minCol + 1;
-            const height = bounds.maxRow - bounds.minRow + 1;
-            
-            // Create a 2D array for the clipboard
-            const selectionData = Array(height).fill().map(() => Array(width).fill(null));
-            
-            // Fill in the colors from the floating layer
-            this.floatingLayer.content.forEach(item => {
-                if (item.relRow >= 0 && item.relRow < height && 
-                    item.relCol >= 0 && item.relCol < width) {
-                    selectionData[item.relRow][item.relCol] = item.color;
-                }
-            });
-            
-            app.clipboard = {
-                data: selectionData,
-                width: width,
-                height: height
-            };
-            return;
-        }
-        
-        // Otherwise, copy from the selected cells
-        if (this.selectedCells.size === 0) return;
-        
-        // Create a rectangle representation of the selection
-        const cells = Array.from(this.selectedCells);
-        const rows = cells.map(cell => parseInt(cell.dataset.row));
-        const cols = cells.map(cell => parseInt(cell.dataset.col));
-        
-        const minRow = Math.min(...rows);
-        const maxRow = Math.max(...rows);
-        const minCol = Math.min(...cols);
-        const maxCol = Math.max(...cols);
-        
-        // Create a 2D array representing the selection
-        const selectionData = [];
-        for (let r = 0; r <= maxRow - minRow; r++) {
-            selectionData[r] = [];
-            for (let c = 0; c <= maxCol - minCol; c++) {
-                const cell = app.grid.getCellAt(r + minRow, c + minCol);
-                selectionData[r][c] = cell && this.selectedCells.has(cell) ? cell.dataset.color : null;
-            }
-        }
-        
-        app.clipboard = {
-            data: selectionData,
-            width: maxCol - minCol + 1,
-            height: maxRow - minRow + 1
-        };
+        this.operations.copySelection();
     }
     
+    cutSelection() {
+        this.operations.cutSelection();
+    }
+    
+    applyColor() {
+        this.operations.fillSelection();
+    }
+    
+    applyColorToSelection() {
+        this.operations.applyColorToSelection();
+    }
+    
+    // Handle context menu actions - fixed to use proper methods
+    handleContextMenuAction(event) {
+        const action = event.currentTarget.dataset.action;
+        
+        switch(action) {
+            case 'copy':
+                this.operations.copySelection();
+                break;
+            case 'cut':
+                this.operations.cutSelection();
+                break;
+            case 'fill':
+                this.operations.fillSelection();
+                break;
+            case 'clear':
+                this.operations.clearSelectionContent();
+                break;
+            case 'flip-h':
+                this.operations.flipHorizontally();
+                break;
+            case 'flip-v':
+                this.operations.flipVertically();
+                break;
+        }
+        
+        // Hide the menu
+        this.hideContextMenu();
+    }
+    
+    // Add handleContextMenu method
+    handleContextMenu(event) {
+        // Make sure we have a cell and it's part of the selection
+        const cell = event.target;
+        if (!cell.classList.contains('grid-cell')) return;
+        
+        // Only show the context menu if the cell is in the current selection
+        if (this.selectedCells.has(cell)) {
+            this.showContextMenu(event);
+            event.preventDefault();
+            return false;
+        }
+    }
+    
+    // Show context menu at mouse position
+    showContextMenu(event) {
+        // Hide context menu first to reset its state
+        this.hideContextMenu();
+        
+        const contextMenu = document.getElementById('selection-context-menu');
+        
+        // Position the menu at mouse coordinates with small offset
+        contextMenu.style.left = `${event.clientX + 5}px`;
+        contextMenu.style.top = `${event.clientY + 5}px`;
+        
+        // Show the menu
+        contextMenu.classList.add('active');
+        
+        // Set up event handlers for menu items
+        contextMenu.querySelectorAll('li').forEach(item => {
+            const newItem = item.cloneNode(true);
+            item.parentNode.replaceChild(newItem, item);
+            newItem.addEventListener('click', this.handleContextMenuAction.bind(this));
+        });
+        
+        // Add a click handler to the document to hide menu when clicking elsewhere
+        setTimeout(() => {
+            document.addEventListener('click', this.hideContextMenu.bind(this), { once: true });
+            document.addEventListener('contextmenu', this.hideContextMenu.bind(this), { once: true });
+        }, 0);
+        
+        // Prevent default context menu and event propagation
+        event.preventDefault();
+        event.stopPropagation();
+        return false;
+    }
+    
+    // Hide context menu
+    hideContextMenu() {
+        const contextMenu = document.getElementById('selection-context-menu');
+        contextMenu.classList.remove('active');
+    }
+    
+    // Add this method to properly capture state before transforms
+    captureStateBeforeOperation(description) {
+        // Fix the function name from captureGridState to captureState
+        app.history.captureState(description || 'Selection operation');
+    }
+    
+    // Make sure this method is defined and accessible
     getFloatingLayerBounds() {
         let minRow = Infinity, maxRow = -Infinity;
         let minCol = Infinity, maxCol = -Infinity;
@@ -468,67 +514,79 @@ class SelectionTool extends Tool {
         return { minRow, maxRow, minCol, maxCol };
     }
     
-    cutSelection() {
-        this.copySelection();
+    // Fix the createFloatingLayer method - ALLOW empty selections
+    createFloatingLayer() {
+        console.log("DEBUG: createFloatingLayer called");
         
-        // If we have a floating layer, just remove it
+        // Capture state before making changes
+        app.history.captureState('Before creating selection');
+        
         if (this.floatingLayer.active) {
-            document.querySelectorAll('.grid-cell.selected, .grid-cell.floating-layer').forEach(cell => {
-                cell.classList.remove('selected', 'selected-top', 'selected-right', 'selected-bottom', 'selected-left', 'floating-layer');
-            });
-            this.floatingLayer.active = false;
-            this.floatingLayer.content = [];
-            this.selectedCells.clear();
+            console.log("DEBUG: Merging existing floating layer before creating a new one");
+            this.mergeFloatingLayer(); 
+        }
+        
+        // Calculate selection bounds
+        const cells = Array.from(this.selectedCells);
+        if (cells.length === 0) {
+            console.log("DEBUG: No cells selected, cannot create floating layer");
             return;
         }
         
-        // Otherwise, clear the selected cells
-        const matrixChanges = [];
+        const rows = cells.map(cell => parseInt(cell.dataset.row));
+        const cols = cells.map(cell => parseInt(cell.dataset.col));
         
+        const minRow = Math.min(...rows);
+        const maxRow = Math.max(...rows);
+        const minCol = Math.min(...cols);
+        const maxCol = Math.max(...cols);
+        
+        // Initialize floating layer
+        this.floatingLayer.active = true;
+        this.floatingLayer.position = { row: minRow, col: minCol };
+        this.floatingLayer.content = [];
+        this.floatingLayer.originalCells = [];
+        
+        // Store cells' content in the floating layer and clear original cells
         this.selectedCells.forEach(cell => {
-            const oldColor = cell.dataset.color;
-            if (oldColor !== '#FFFFFF') {
-                matrixChanges.push({
-                    cell: cell,
-                    oldColor: oldColor,
-                    newColor: '#FFFFFF'
-                });
-            }
+            const row = parseInt(cell.dataset.row);
+            const col = parseInt(cell.dataset.col);
+            const color = cell.dataset.color;
             
-            // Apply change
+            // Store in floating layer (as relative positions)
+            this.floatingLayer.content.push({
+                relRow: row - minRow,
+                relCol: col - minCol,
+                color: color,
+                isContent: color !== '#FFFFFF' // Flag to indicate if this is "real" content
+            });
+            
+            // Record original cell for potential restoration
+            this.floatingLayer.originalCells.push({
+                row: row,
+                col: col,
+                color: color
+            });
+            
+            // Clear original cell
             cell.style.backgroundColor = '#FFFFFF';
             cell.dataset.color = '#FFFFFF';
         });
         
-        // Record for undo
-        if (matrixChanges.length > 0) {
-            app.history.addMatrixAction(matrixChanges);
-        }
-        
-        this.clearSelection();
-    }
+        // IMPORTANT: REMOVED hasNonWhiteContent check - allow ANY selection
     
-    // Handle cleanup when switching tools
-    cancelOperation() {
-        // If we have a floating layer, merge it down
-        if (this.floatingLayer.active) {
-            this.mergeFloatingLayer();
-        }
+        // Clear the selection visuals since we'll now have floating content
+        this.selectedCells.clear();
+        document.querySelectorAll('.grid-cell.selected').forEach(cell => {
+            cell.classList.remove('selected', 'selected-top', 'selected-right', 'selected-bottom', 'selected-left');
+        });
         
-        if (this.isMoving) {
-            this.isMoving = false;
-        }
+        // Show the floating selection
+        this.showFloatingLayer();
+        console.log("DEBUG: Floating layer created and displayed");
         
-        if (this.isSelecting) {
-            this.isSelecting = false;
-        }
-    }
-    
-    // Add an alias for backward compatibility
-    commitFloatingSelection() {
-        if (this.floatingLayer && this.floatingLayer.active) {
-            this.mergeFloatingLayer();
-        }
+        // Capture state after the change is complete
+        app.history.captureState('Create floating selection');
     }
 }
 
